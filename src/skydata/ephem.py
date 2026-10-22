@@ -39,8 +39,10 @@ BODIES = {
 
 # Swiss Ephemeris house methods that return 12 cusps. An unknown letter makes
 # Swiss Ephemeris fall back to Placidus without saying so, hence the list.
-# G (Gauquelin, 36 sectors) is left out.
-HOUSE_SYSTEMS = tuple("ABCDEFHIiKLMNOPQRSTUVWXY")
+# G (Gauquelin, 36 sectors) is left out. Swiss Ephemeris also reads most
+# lowercase letters as the uppercase system; only i (Sunshine, alternative)
+# is its own system, so the other lowercase spellings are not accepted.
+HOUSE_SYSTEMS = tuple("ABCDEFHIiJKLMNOPQRSTUVWXY")
 
 ASCMC_NAMES = ("ascendant", "midheaven", "armc", "vertex", "equatorial_ascendant",
                "co_ascendant_koch", "co_ascendant_munkasey", "polar_ascendant")

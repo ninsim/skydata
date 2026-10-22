@@ -22,7 +22,7 @@ Needs Python 3.10 or later.
 ```
 git clone https://github.com/ninsim/skydata.git
 cd skydata
-git checkout v0.1.0          # a release tag
+git checkout v0.1.1          # a release tag
 python3 -m venv .venv
 .venv/bin/pip install .      # installs the pinned pyswisseph==2.10.3.2
 ```
@@ -75,7 +75,7 @@ skydata --version
 
 Each result has the time, `jd_ut`, and per body `lon`, `lat`, `dist`, `lon_speed`, `lat_speed`, `dist_speed`, plus `ra`, `dec`, `ra_speed`, `dec_speed` when `equatorial` is true. With a place it adds `houses` (the 12 `cusps`, `ascendant`, `midheaven`, `armc`, `vertex`, `equatorial_ascendant`, `co_ascendant_koch`, `co_ascendant_munkasey`, `polar_ascendant`) and `local_sidereal_time` in hours.
 
-House systems are the Swiss Ephemeris letters that give 12 cusps: `A B C D E F H I i K L M N O P Q R S T U V W X Y`. Placidus and Koch are undefined inside the polar circles, and skydata rejects them there rather than substituting another system. Ask for `O` (Porphyry) or another system if you want one.
+House systems are the Swiss Ephemeris letters that give 12 cusps: `A B C D E F H I i J K L M N O P Q R S T U V W X Y`. Letters are case-sensitive: Swiss Ephemeris reads most lowercase letters as the uppercase system, but skydata accepts only `i`, which is a system of its own. Placidus and Koch are undefined inside the polar circles, and skydata rejects them there rather than substituting another system. Ask for `O` (Porphyry) or another system if you want one.
 
 ### `events`: exact times in a window
 
@@ -103,8 +103,8 @@ How the searches work: they sample every 6 hours, and halve a step (down to 15 m
 Every response repeats the request with defaults filled in, and carries the skydata version, the schema version, the Swiss Ephemeris version and the fingerprint of the ephemeris files:
 
 ```json
-{"skydata": {"version": "0.1.0", "schema": 1},
- "release": {"skydata_version": "0.1.0", "schema_version": 1, "swisseph_version": "2.10.03",
+{"skydata": {"version": "0.1.1", "schema": 1},
+ "release": {"skydata_version": "0.1.1", "schema_version": 1, "swisseph_version": "2.10.03",
              "ephemeris_fingerprint": "sha256:..."},
  "request": {...},
  "results": [...]}
