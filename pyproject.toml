@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "skydata"
+dynamic = ["version"]
+description = "Astronomical facts from Swiss Ephemeris as JSON, on the command line"
+readme = "README.md"
+license = {text = "AGPL-3.0-only"}
+requires-python = ">=3.10"
+# Pinned: every number skydata returns depends on this exact library.
+dependencies = ["pyswisseph==2.10.3.2"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+skydata = "skydata.cli:main"
+
+[project.urls]
+Source = "https://github.com/ninsim/skydata"
+
+[tool.setuptools.dynamic]
+version = {attr = "skydata.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
