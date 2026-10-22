@@ -94,8 +94,7 @@ def _emit(data: bytes, stdout, out_path) -> None:
     temp = _write_temp(Path(out_path), data) if out_path else None
     try:
         try:
-            stdout.write(data)
-            stdout.flush()
+            _write_all(stdout, data)
         except OSError as exc:
             _silence(stdout)
             raise SkydataError(f"could not write stdout: {exc}") from None
@@ -109,6 +108,17 @@ def _emit(data: bytes, stdout, out_path) -> None:
     finally:
         if temp:
             os.unlink(temp)
+
+
+def _write_all(stream, data: bytes) -> None:
+    """Write every byte. A raw or non-blocking stream may accept only part of a write."""
+    view = memoryview(data)
+    while view:
+        written = stream.write(view)
+        if not written:
+            raise OSError(f"stdout took no more bytes after {len(data) - len(view)} of {len(data)}")
+        view = view[written:]
+    stream.flush()
 
 
 def _write_temp(path: Path, data: bytes) -> str:

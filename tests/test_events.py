@@ -134,6 +134,34 @@ def test_six_hour_scan_misses_nothing_a_one_hour_scan_finds(ask, monkeypatch):
             assert a["direction"] == b["direction"]
 
 
+def test_light_bending_wiggle_near_the_sun_finds_all_three_roots(ask):
+    # Chiron passes behind the Sun on 2027-04-20. Light bending makes the
+    # Uranus-Chiron separation reverse twice within one 6 hour step. Found by
+    # the phase 1 review with a ten-minute scan.
+    (found,) = find(ask, {"type": "separation", "a": "uranus", "b": "chiron",
+                          "angles": [326.65825913402955]},
+                    start="2027-04-20T00:00:00Z", end="2027-04-21T00:00:00Z")
+    expected = ["2027-04-20T14:50:34Z", "2027-04-20T16:21:36Z", "2027-04-20T17:52:47Z"]
+    assert [iso(to_second(e["time"])) for e in found] == expected
+    assert [e["direction"] for e in found] == ["increasing", "decreasing", "increasing"]
+
+
+@pytest.mark.parametrize("eclipse", REFERENCE["eclipses_2027"], ids=lambda e: f"{e['kind']}-{e['jd_ut']}")
+@pytest.mark.parametrize("start_offset, end_offset, included", [
+    (-1, 86400, True),     # a second before the maximum: Swiss Ephemeris alone would skip it
+    (1, 86400, False),
+    (-86400, 1, True),
+    (-86400, -1, False),
+])
+def test_eclipse_at_a_window_edge(ask, eclipse, start_offset, end_offset, included):
+    maximum = datetime(2000, 1, 1, 12, tzinfo=timezone.utc) + timedelta(days=eclipse["jd_ut"] - 2451545.0)
+    start = maximum + timedelta(seconds=start_offset)
+    end = maximum + timedelta(seconds=end_offset)
+    (found,) = find(ask, {"type": "eclipse", "kind": eclipse["kind"]},
+                    start=ephem.format_time(start), end=ephem.format_time(end))
+    assert [e["jd_ut"] for e in found] == ([eclipse["jd_ut"]] if included else [])
+
+
 def test_events_sorted_by_time_across_targets(ask):
     (found,) = find(ask, {"type": "crossing", "body": "sun", "degrees": [270, 0, 90]})
     assert [e["degree"] for e in found] == [0, 90, 270]

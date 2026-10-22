@@ -61,6 +61,11 @@ def swisseph_version() -> str:
     return swe.version
 
 
+def pyswisseph_build() -> str:
+    """pyswisseph's own build stamp, which changes even when the bundled C library does not."""
+    return str(swe.__version__)
+
+
 def parse_time(text, where: str) -> datetime:
     """Parse an ISO 8601 UTC time such as 2027-03-20T12:00:00Z."""
     match = _TIME_RE.fullmatch(text) if isinstance(text, str) else None

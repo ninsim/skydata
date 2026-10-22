@@ -73,16 +73,59 @@ def test_stale_release_exits_3(release_path, tmp_path):
     stale = tmp_path / "RELEASE.json"
     stale.write_text(json.dumps(record))
     code, _, err = run(SKY, stale)
-    assert code == 3 and "stale" in err
+    assert code == 3 and "is stale (skydata_version" in err
 
 
-def test_changed_ephemeris_files_exit_3(release_path, tmp_path):
+def test_stale_pyswisseph_build_exits_3(release_path, tmp_path):
     record = json.loads(release_path.read_text())
-    record["top_level_signature"] = "0" * 64
-    changed = tmp_path / "RELEASE.json"
-    changed.write_text(json.dumps(record))
-    code, _, err = run(SKY, changed)
-    assert code == 3 and "changed" in err
+    record["pyswisseph_build"] = "19990101"
+    stale = tmp_path / "RELEASE.json"
+    stale.write_text(json.dumps(record))
+    code, _, err = run(SKY, stale)
+    assert code == 3 and "is stale (pyswisseph_build" in err
+
+
+@pytest.mark.parametrize("key, value", [
+    ("ephemeris_fingerprint", None), ("ephemeris_fingerprint", "sha256:abc"),
+    ("ephe_path", None), ("file_signature", None), ("schema_version", "1"),
+])
+def test_malformed_release_exits_3(release_path, tmp_path, key, value):
+    record = json.loads(release_path.read_text())
+    record[key] = value
+    bad = tmp_path / "RELEASE.json"
+    bad.write_text(json.dumps(record))
+    code, out, err = run(SKY, bad)
+    assert code == 3 and out == b"" and "release record malformed at" in err
+
+
+def released_dummy_dir(tmp_path):
+    """A fake ephemeris directory with a nested file, plus its release record."""
+    ephe = tmp_path / "ephe"
+    (ephe / "sat").mkdir(parents=True)
+    (ephe / "sepl_18.se1").write_bytes(b"A" * 100)
+    (ephe / "sat" / "sepm9401.se1").write_bytes(b"B" * 50)
+    record = tmp_path / "RELEASE.json"
+    assert cli.main(["release", "--ephe-path", str(ephe), "--release", str(record)],
+                    None, io.BytesIO(), None) == 0
+    return ephe, record
+
+
+@pytest.mark.parametrize("change", ["same_size_rewrite", "nested_file", "new_file", "removed_file"])
+def test_changed_ephemeris_files_exit_3(tmp_path, change):
+    ephe, record = released_dummy_dir(tmp_path)
+    if change == "same_size_rewrite":
+        target = ephe / "sepl_18.se1"
+        target.write_bytes(b"C" * 100)
+        stamp = target.stat().st_mtime_ns + 1_000_000_000
+        os.utime(target, ns=(stamp, stamp))
+    elif change == "nested_file":
+        (ephe / "sat" / "sepm9401.se1").write_bytes(b"B" * 51)
+    elif change == "new_file":
+        (ephe / "semo_18.se1").write_bytes(b"D")
+    else:
+        (ephe / "sat" / "sepm9401.se1").unlink()
+    code, out, err = run(SKY, record)
+    assert code == 3 and out == b"" and "changed since the release record was written" in err
 
 
 def test_no_silent_fallback_without_data_files(tmp_path):
@@ -126,6 +169,42 @@ def test_out_keeps_old_file_when_stdout_fails(release_path, tmp_path):
     stderr = io.StringIO()
     code = cli.main(["--release", str(release_path), "--out", str(target)], stdin, Broken(), stderr)
     assert code == 1 and "stdout" in stderr.getvalue()
+    assert target.read_text() == "old"
+    assert os.listdir(tmp_path) == ["facts.json"]
+
+
+class Trickle:
+    """A raw stream that takes at most `chunk` bytes per write, then `stall_after` writes take none."""
+
+    def __init__(self, chunk, stall_after=None):
+        self.chunk, self.stall_after, self.calls, self.data = chunk, stall_after, 0, b""
+
+    def write(self, data):
+        self.calls += 1
+        if self.stall_after is not None and self.calls > self.stall_after:
+            return None
+        taken = bytes(data[:self.chunk])
+        self.data += taken
+        return len(taken)
+
+    def flush(self):
+        pass
+
+
+def test_short_writes_are_completed(release_path):
+    stream = Trickle(chunk=100)
+    code = cli.main(["--release", str(release_path)], io.BytesIO(json.dumps(SKY).encode()),
+                    stream, io.StringIO())
+    assert code == 0 and stream.calls > 1 and json.loads(stream.data)["results"]
+
+
+def test_out_keeps_old_file_when_stdout_stalls(release_path, tmp_path):
+    target = tmp_path / "facts.json"
+    target.write_text("old")
+    stderr = io.StringIO()
+    code = cli.main(["--release", str(release_path), "--out", str(target)],
+                    io.BytesIO(json.dumps(SKY).encode()), Trickle(chunk=100, stall_after=2), stderr)
+    assert code == 1 and "stdout took no more bytes after 200" in stderr.getvalue()
     assert target.read_text() == "old"
     assert os.listdir(tmp_path) == ["facts.json"]
 

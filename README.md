@@ -35,7 +35,7 @@ Then write the release record once:
 .venv/bin/skydata release --ephe-path /path/to/ephe
 ```
 
-This hashes every file under that directory and writes `RELEASE.json` beside the virtual environment (here, in the clone). Use `--release PATH` or the `SKYDATA_RELEASE` environment variable to put it elsewhere. Run it again after upgrading skydata or changing the ephemeris files: skydata refuses to answer while the record is stale.
+This hashes every file under that directory and writes `RELEASE.json` beside the virtual environment (here, in the clone). Use `--release PATH` or the `SKYDATA_RELEASE` environment variable to put it elsewhere. Run it again after upgrading skydata or pyswisseph or changing the ephemeris files. Every call compares the running versions, and the path, size and modification time of every file under the directory, with the record, and refuses to answer while they differ. Hashing every call would be too slow, so a file rewritten with the same size and modification time would go unnoticed: treat the directory as read-only once released.
 
 ## Use
 
@@ -96,7 +96,7 @@ House systems are the Swiss Ephemeris letters that give 12 cusps: `A B C D E F H
 
 The window includes `start` and excludes `end`. Results come back in the order of `find`, each with its events sorted by time. Every event has `time` and `jd_ut`. Crossings and separations also carry the `degree` or `angle` matched and a `direction`, `increasing` or `decreasing`, which tells a direct pass from a retrograde one. Stations carry `direction` `retrograde` or `direct`. Eclipses carry `type`.
 
-How the searches work: they sample every 6 hours, split the window wherever the speed changes sign, and bisect each bracketed root until the bracket is one floating-point step wide (about 40 microseconds for current dates). Each pass of a retrograde loop falls in its own piece, so all three passes are found. Two stations closer together than 6 hours could be missed. Of the supported bodies only the true node turns that often, and it would have to barely graze zero speed. A slow planet's speed crosses zero so gently that its station time is only meaningful to a few seconds.
+How the searches work: they sample every 6 hours, and halve a step (down to 15 minutes) wherever the motion between two samples disagrees with their speeds by more than 1 percent, which is where a step could hide a reversal. They then split the window wherever the speed changes sign and bisect each bracketed root until the bracket is one floating-point step wide (about 40 microseconds for current dates). Each pass of a retrograde loop falls in its own piece, so all three passes are found. The extra samples matter for the true node, which turns often, and for the few hours when a body passes behind the Sun and light bending wiggles its apparent position by up to about 2 arcseconds. A slow planet's speed crosses zero so gently that its station time is only meaningful to a few seconds.
 
 ### Responses
 
