@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 
@@ -102,12 +103,13 @@ def public(release: dict) -> dict:
 
 
 def _files(root: Path):
-    """(relative path, full path) for every file under root, in a fixed order."""
+    """(relative path, full path) for every regular file under root, in a fixed order."""
     found = []
     for directory, subdirs, files in os.walk(root):
         for name in files:
             full = os.path.join(directory, name)
-            found.append((Path(os.path.relpath(full, root)).as_posix(), full))
+            if stat.S_ISREG(os.stat(full).st_mode):  # a FIFO or device would block or mislead
+                found.append((Path(os.path.relpath(full, root)).as_posix(), full))
     return sorted(found)
 
 

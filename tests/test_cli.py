@@ -110,6 +110,17 @@ def released_dummy_dir(tmp_path):
     return ephe, record
 
 
+def test_release_skips_special_files(tmp_path):
+    ephe = tmp_path / "ephe"
+    ephe.mkdir()
+    (ephe / "sepl_18.se1").write_bytes(b"A" * 100)
+    os.mkfifo(ephe / "pipe")  # opening this for hashing would block forever
+    record = tmp_path / "RELEASE.json"
+    assert cli.main(["release", "--ephe-path", str(ephe), "--release", str(record)],
+                    None, io.BytesIO(), None) == 0
+    assert json.loads(record.read_text())["ephemeris_files"] == 1
+
+
 @pytest.mark.parametrize("change", ["same_size_rewrite", "nested_file", "new_file", "removed_file"])
 def test_changed_ephemeris_files_exit_3(tmp_path, change):
     ephe, record = released_dummy_dir(tmp_path)
